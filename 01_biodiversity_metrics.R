@@ -470,6 +470,8 @@ rm(coord)
 
 data.table::fwrite(df, 'G:/My Drive/Dissertation/003_Ensemble_modeling/data/02_sp_rich_maps/02_projection/sp_rich_data_fut.txt')
 
+df <- data.table::fread('G:/My Drive/Dissertation/003_Ensemble_modeling/data/02_sp_rich_maps/02_projection/sp_rich_data_fut.txt') %>% as_tibble()
+
 # future standard deviation of species richness (null dispersal)
 nd_maps <- grep('nd', names(f_sp_maps), value = TRUE)
 nd_maps <- f_sp_maps[[nd_maps]]

@@ -8,9 +8,15 @@
   require(dplyr)
   require(tidyverse)
   require(dotwhisker)
+  library(tidyverse)
+  library(here)
+  library(glue)
+  library(officer)
+  library(rvg)
+  library(viridis)
 }
 
-setwd('Google Drive/')
+#setwd('Google Drive/')
 setwd('G:/My Drive/')
 
 spp_prev <- data.table::fread('Dissertation/003_Ensemble_modeling/data/species_prevalence.csv') %>% tibble()
@@ -80,16 +86,16 @@ exp2 <- left_join(exp, sp_traits, by = c('sp' = 'species')) %>%
 # Figure showing boxplot of HSC value ranges for Pinus and Quercus species
 exp2 %>% filter(
   sp %in% c(
-    'Pinus attenuata',
+    'Abies magnifica',
+    'Quercus agrifolia',
     'Pinus balfouriana',
     'Pinus coulteri',
-    'Pinus jeffreyi',
     'Pinus lambertiana',
-    'Pinus muricata',
     'Pinus quadrifolia',
     'Pinus sabiniana',
-    'Pinus torreya',
+    'Pinus torreyana',
     'Sequoia sempervirens',
+    'Salvia mellifera',
     'Sequoiadendron giganteum'
   )
 ) %>% ggplot(aes(x = sp, y = log(HSC + 1), fill = dispersal)) + geom_boxplot() + coord_flip() + theme_bw() + scale_fill_grey(
@@ -126,6 +132,59 @@ exp2 %>% filter(
   legend.title = element_text(size = 20),
   legend.text = element_text(size = 20)
 )
+
+
+# Figure showing boxplot of HSC value ranges ordered by standard deviation
+uncertainty_gg <-
+  exp2 %>%
+  filter(dispersal == 'nd_change_prop',
+    year == 2085 &
+      sp %in% c(
+        'Arctostaphylos rudis',
+        'Quercus wislizeni',
+        'Abies magnifica',
+        'Salvia leucophylla',
+        'Sequoiadendron giganteum',
+        'Ceanothus verrucosus',
+        'Quercus sadleriana',
+        'Pinus torreyana'
+      )
+  ) %>%
+  ggplot(aes(
+    x = reorder(sp, area100),
+    y = HSC
+  )) + geom_hline(yintercept = 0) + geom_violin(aes(fill = sp)) + geom_boxplot(fill = 'white', width = .1) +  coord_flip() + theme_bw() + scale_fill_uchicago(guide = NULL) +
+  labs(x = '', y = 'Exposure') + theme(
+    plot.title = element_text(
+      size = 20,
+      margin = ggplot2::margin(
+        t = 0,
+        r = 20,
+        b = 0,
+        l = 0
+      )
+    ),
+    axis.title.x = element_text(
+      size = 20 + 2,
+      margin = ggplot2::margin(
+        t = 20,
+        r = 0,
+        b = 0,
+        l = 0
+      )
+    ),
+    
+    
+    axis.text.x = element_text(size = 20),
+    axis.text.y = element_text(size = 20),
+    
+    strip.text.x = element_text(size = 20),
+    strip.text.y = element_text(size = 20),
+    
+    # Legend text
+    legend.title = element_text(size = 20),
+    legend.text = element_text(size = 20)
+  )
 
 # Figure showing boxplot of HSC value ranges under null dispersal ordered by range size
 null_gg <-
@@ -188,7 +247,8 @@ exp_sd <- exp2 %>%
     prev,
     pr
   ) %>%
-  summarise(sd_HSC = sd(HSC))
+  summarise(sd_HSC = sd(HSC),
+            mean_HSC = mean(HSC))
 
 
 # ggplots
@@ -819,6 +879,14 @@ ggsave(
   dpi = 300
 )
 
+ggsave(
+  full_dw,
+  file = 'Dissertation/003_Ensemble_modeling/figures/full_dot_and_whisker.svg',
+  height = 55,
+  width = 57,
+  unit = 'cm',
+  dpi = 300
+)
 
 
 # Simple linear regression 
@@ -1226,6 +1294,94 @@ for (i in 1:length(predictors)) {
 
 # faceted scatterplots
 s0 <- all_sd
+
+
+##%######################################################%##
+#                                                          #
+####           Dot and whisker for Powerpoint           ####
+#                                                          #
+##%######################################################%##
+
+
+# dot and whisker plots (RCP only)
+dw1 <- list(step1, step3, step5) %>%
+  dwplot(whisker_args = list(size = 4),
+         dot_args = list(size = 10)) %>%
+  relabel_predictors(
+    `scale(prev)` = "Prevalence",
+    `scale(area100)` = "Range size",
+    `scale(niche_breadth)` = "Niche breadth",
+    `scale(mean_elev)` = "Elevation",
+    `scale(range_elev)` = "Range in elevation",
+    `scale(mean_topo)` = "Topo. het.",
+    `scale(range_topo)` = "Range in topo. het."
+  ) +
+  theme_bw(base_size = 43) + xlab("Standardized Estimate") + ylab("") +
+  geom_vline(xintercept = 0,
+             colour = "black",
+             linetype = 2) +
+  theme(
+    #  legend.position = c(.995, .3),
+    #  legend.position = 'bottom',
+    legend.justification = c(1, 1),
+    legend.background = element_rect(colour = "grey80"),
+    legend.title.align = .5
+  ) +
+  scale_colour_manual(
+    values = "#6DCC57",
+    breaks = c("Model 3"),
+    labels = c("RCP")
+  ) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
+  ggtitle('No dispersal')
+
+d# full dispersal
+dw2 <- list(step6) %>%
+  dwplot(whisker_args = list(size = 4),
+         dot_args = list(size = 10)) %>%
+  relabel_predictors(
+    `scale(prev)` = "Prevalence",
+    `scale(area100)` = "Range size",
+    `scale(niche_breadth)` = "Niche breadth",
+    `scale(mean_elev)` = "Elevation",
+    `scale(range_elev)` = "Range in elevation",
+    `scale(mean_topo)` = "Topo. het.",
+    `scale(range_topo)` = "Range in topo. het."
+  ) +
+  theme_bw(base_size = 43) + xlab("Standardized Estimate") + ylab("") +
+  geom_vline(xintercept = 0,
+             colour = "black",
+             linetype = 2) +
+  theme(
+    #legend.position = c(.995, .3),
+    #  legend.position = 'bottom',
+    legend.justification = c(1, 1),
+    legend.background = element_rect(colour = "grey80"),
+    legend.title.align = .5
+  ) +
+  scale_colour_manual(
+    values = "#6DCC57",
+    breaks = c("Model 1"),
+    labels = c("RCP")
+  ) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
+  ggtitle('Full dispersal')
+
+library(patchwork)
+
+full_dw <-
+  (dw1 / dw2) +
+  plot_annotation(tag_levels = 'A') + plot_layout(guides = "collect") &
+  theme(legend.position = 'bottom')
+
+ggsave(
+  full_dw,
+  file = 'Dissertation/003_Ensemble_modeling/figures/full_dot_and_whisker.png',
+  height = 55,
+  width = 57,
+  unit = 'cm',
+  dpi = 300
+)
 
 
 

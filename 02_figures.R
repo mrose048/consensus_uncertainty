@@ -51,6 +51,53 @@ theme_pub <- function (base_size = 12,
     )
 }
 
+# publication quality theme
+theme_map <- function (base_size = 12,
+                       base_family = "") {
+  theme_grey(base_size = base_size,
+             base_family = base_family) %+replace%
+    
+    theme(
+      
+      # Set text size
+      plot.title = element_text(size = 18, margin = margin(t = 0, r = 20, b = 0, l = 0)),
+      axis.title.x = element_text(size = 20, margin = margin(t = 20, r = 0, b = 0, l = 0)),
+      axis.title.y = element_text(size = 20,
+                                  angle = 90, margin = margin(t = 0, r = 20, b = 0, l = 0)),
+      
+      #axis.text.x = element_text(size = 17),
+      #axis.text.y = element_text(size = 17),
+      
+      strip.text.x = element_text(size = 18),
+      strip.text.y = element_text(size = 18,
+                                  angle = -90),
+      
+      # Legend text
+      legend.title = element_text(size = base_size),
+      legend.text = element_text(size = base_size),
+      
+      # Configure lines and axes
+      # axis.ticks.x = element_line(colour = "black"),
+      # axis.ticks.y = element_line(colour = "black"),
+      
+      # Plot background
+      #  panel.background = element_rect(fill = "white"),
+      #panel.grid.major = element_line(colour = "grey83",
+      #                                size = 0.2),
+      # panel.grid.minor = element_line(colour = "grey88",
+      #                                 size = 0.5),
+      
+      # Facet labels
+      legend.key = element_rect(colour = "grey80"),
+      # strip.background = element_rect(
+      #   fill = "grey80",
+      #   colour = "grey50",
+      #   size = 0.2
+      # )
+    )
+}
+
+
 
 {
   require(dplyr)
@@ -173,7 +220,7 @@ ggsave(
 
 perf <-
   data.table::fread('Dissertation/003_Ensemble_modeling/data/model_performance.csv') %>%
-  dplyr::filter(species %in% df$sp)
+  dplyr::filter(species %in% df$sp) %>% tibble()
 
 sort(unique(perf$model))
 perf$model <- factor(perf$model, levels = c(
@@ -197,6 +244,43 @@ perf2 <- perf %>%
   dplyr::group_by(species)  %>%
   mutate(rank = dense_rank(desc(AUC_mean)))
 
+# performance by model type
+mod_perf <- perf2 %>%
+  group_by(model) %>%
+  summarize(mean_AUC = mean(AUC_mean),
+            mean_TSS = mean(TSS_mean),
+            mean_BOYCE = mean(BOYCE_mean))
+
+# average performance of individual algorithms
+ind_avg <- perf2 %>%
+  filter(model %in% c("gam",
+                      "gau",
+                      "gbm",
+                      "glm",
+                      "max",
+                      "net",
+                      "raf",
+                      "svm")) %>%
+  group_by() %>%
+  summarize(mean_AUC = mean(AUC_mean),
+            mean_TSS = mean(TSS_mean),
+            mean_BOYCE = mean(BOYCE_mean))
+
+# average performance of consensus methods
+con_avg <- perf2 %>%
+  filter(model %in% c("mean",
+                      'meansup',
+                      'meanthr',
+                      'meanw',
+                      'median')) %>%
+  group_by() %>%
+  summarize(
+    mean_AUC = mean(AUC_mean),
+    mean_TSS = mean(TSS_mean),
+    mean_BOYCE = mean(BOYCE_mean)
+  )
+
+
 # histogram of each model's frequency of ranking
 h0 <-
   perf2 %>% ggplot(aes(x = rank, fill = model)) + geom_histogram() + facet_wrap(~ model, ncol = 3) + labs(x = 'Model ranking (AUC)', y = 'Frequency') + scale_fill_viridis_d(guide = NULL)
@@ -207,8 +291,9 @@ perf3 <-
   group_by(species) %>%
   summarize(
     AUC_mean2 = mean(AUC_mean),
-    TSS_mean2 = mean(TSS_mean)) %>%
-  left_join(exp_sd, by = c('sp' = 'species'))
+    TSS_mean2 = mean(TSS_mean),
+    Boyce_mean2 = mean(BOYCE_mean)) %>%
+  left_join(exp_sd, by = c('species' = 'sp'))
 
 # performance and prevlance
 perf_prev <- ggplot(perf3, aes(x =prev, y = AUC_mean2)) +
@@ -934,7 +1019,7 @@ ggplotMyRaster = function(myRast,
     ))
   
   #Now make the map
-  g = ggplot(data = df %>% na.omit(), aes(y = Latitude, x = Longitude)) +
+  g = ggplot() +
     coord_equal() +
     geom_spatvector(
       data = cfp,
@@ -942,7 +1027,7 @@ ggplotMyRaster = function(myRast,
       fill = "gray90",
       size = 0.2
     ) +
-    geom_raster(aes(fill = val_int)) +
+    geom_raster(data = df %>% na.omit(), aes(y = Latitude, x = Longitude, fill = val_int)) +
     coord_equal() +
     geom_spatvector(
       data = cfp,
@@ -982,12 +1067,12 @@ ggplotMyRaster = function(myRast,
       size = 0.5,
       color = 'black'
     ),
-    legend.title = element_text(size = 20),
-    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 40),
+    legend.text = element_text(size = 38),
     legend.box.margin = margin(1, 1, 1, 1),
-    plot.title = element_text(size = 30),
-    axis.title = element_text(size = 25),
-    axis.text = element_text(size = 20),
+    plot.title = element_text(size = 50),
+    axis.title = element_text(size = 45),
+    axis.text = element_text(size = 40),
     plot.margin = unit(c(0, 0, 1, 0), "cm"),
     panel.grid = element_line(size = 0.1, colour = "black"),
     panel.border = element_rect(
@@ -1115,10 +1200,10 @@ library(ggspatial)
 # MAPS FOR FIGURES
 ggp1 = ggplotMyRaster(raster(sd_map), titleString = 'All Factors') 
 ggp2 = ggplotMyRaster(raster(model_sd), titleString = 'Consensus Method') 
-ggp3 = ggplotMyRaster(raster(rcp_sd), titleString = 'Emissions Scenario (RCP)')
-ggp4 = ggplotMyRaster(raster(gcm_sd), titleString = 'Global Circulation Model')
+ggp3 = ggplotMyRaster(raster(rcp_sd), titleString = 'RCP')
+ggp4 = ggplotMyRaster(raster(gcm_sd), titleString = 'GCM')
 ggp5 = ggplotMyRaster(raster(year_sd), titleString = 'Time Period')
-ggp6 = ggplotMyRaster(raster(dis_sd), titleString = 'Dispersal Scenario')
+ggp6 = ggplotMyRaster(raster(dis_sd), titleString = 'Dispersal Assumption')
 
 library(cowplot)
 
@@ -1133,7 +1218,7 @@ gg_uncertainty = plot_grid(
   ncol = 3,
   rel_heights = c(1, 1, 1, 1, 1, 1),
   align = "vh",
-  label_size = 40,
+  label_size = 50,
   labels = c("A", "B", "C", "D", "E", "F")
 )
 
@@ -1451,3 +1536,50 @@ for(i in 1:length(r)){
   )
 }
 
+##%######################################################%##
+#                                                          #
+####      Species data to include with manuscript       ####
+#                                                          #
+##%######################################################%##
+
+# 1 Species
+# 2 # of pr
+# 3 average AUC, Boyce, and TSS
+# 4 Range size
+# 5 Prevalence
+# 6 niche breadth
+# 7 topo het, elevation, ranges
+# 8 standard deviation in habitat suitability change
+# 9 average habitat change 
+# 2 files 1 for null and full dispersal
+
+full_df <- perf3 %>%
+  pivot_wider(
+    id_cols = c(
+      species,
+      AUC_mean2,
+      TSS_mean2,
+      Boyce_mean2,
+      area100,
+      niche_breadth,
+      range_topo,
+      mean_topo,
+      range_elev,
+      mean_elev,
+      prev,
+      pr
+    ),
+    names_from = dispersal,
+    values_from = c(sd_HSC, mean_HSC)
+  ) %>%
+  rename(AUC_mean = AUC_mean2,
+         TSS_mean = TSS_mean2,
+         Boyce_mean = Boyce_mean2,
+         range_size = area100,
+         full_disp_hsc_SD = sd_HSC_fd_change_prop,
+         full_disp_hsc_mean = mean_HSC_fd_change_prop,
+         no_disp_hsc_SD = sd_HSC_nd_change_prop,
+         no_disp_hsc_mean = mean_HSC_nd_change_prop)
+
+
+data.table::fwrite(full_df, 'G:/My Drive/Dissertation/003_Ensemble_modeling/data/species_data.csv')
